@@ -1,0 +1,51 @@
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: services/airflow/Dockerfile
+  restart: always
+  env_file: .env
+  environment:
+    AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
+  volumes:
+    - ./services/airflow/dags:/opt/airflow/dags
+    - ./services/airflow/logs:/opt/airflow/logs
+    - ./data:/opt/airflow/data
+    - ./models:/opt/airflow/models
+    - airflow_db_volume:/opt/airflow
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: code/deployment/api/Dockerfile
+    container_name: api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models
+    environment:
+      - MODEL_PATH=/app/models/
+    restart: unless-stopped
+
+  airflow-webserver:
+    <<: *airflow-common
+    ports:
+      - "8080:8080"
+    command: >
+      bash -c "
+      airflow db init &&
+      (airflow users create -u ${AIRFLOW_ADMIN_USERNAME} -p ${AIRFLOW_ADMIN_PASSWORD} -f ${AIRFLOW_ADMIN_FIRSTNAME} -l ${AIRFLOW_ADMIN_LASTNAME} -r Admin -e ${AIRFLOW_ADMIN_EMAIL}) &&
+      airflow webserver
+      "
+
+  airflow-scheduler:
+    <<: *airflow-common
+    depends_on:
+      - airflow-webserver
+    command: airflow scheduler
+
+volumes:
+  airflow_db_volume:
