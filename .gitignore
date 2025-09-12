@@ -5,3 +5,4 @@ services/airflow/logs/scheduler
 __pycache__
 .log
 /.venv
+kaggle.json
