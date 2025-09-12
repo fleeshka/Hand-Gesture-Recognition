@@ -4,3 +4,4 @@ services/airflow/logs/dag_processor_manager
 services/airflow/logs/scheduler
 __pycache__
 .log
+/.venv
