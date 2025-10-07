@@ -15,12 +15,12 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY code/deployment/api/requirements.txt .
+COPY api/requirements.txt .
 
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-COPY code/deployment/api .
+COPY api .
 
 RUN mkdir -p /app/models
 
