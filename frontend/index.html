@@ -792,6 +792,7 @@
                     'ok': '👌',
                     'fist': '✊',
                     'open_palm': '🖐️',
+                    'open_hand': '🖐️',
                     'point': '👉',
                     'rock': '🤘',
                     'wave': '👋',
@@ -801,7 +802,15 @@
             }
             
             formatGestureName(gesture) {
-                // Convert snake_case to Title Case
+                // Friendly display names for gestures
+                const friendlyMap = {
+                    'open_palm': 'Open Hand',
+                    'open_hand': 'Open Hand',
+                    'thumbs_up': 'Thumbs Up',
+                    'thumbs_down': 'Thumbs Down'
+                };
+                if (friendlyMap[gesture]) return friendlyMap[gesture];
+                // Default: snake_case -> Title Case
                 return gesture
                     .split('_')
                     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
