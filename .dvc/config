@@ -1,0 +1,4 @@
+[core]
+    remote = ydisk
+['remote "ydisk"']
+    url = C:\Users\flees\

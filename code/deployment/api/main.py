@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import logging
@@ -8,6 +8,8 @@ import cv2
 import tensorflow as tf
 from pydantic import BaseModel
 import os
+from model_downloader import maybe_download_model
+from model_service import ModelService, get_model_path_from_env
 
 
 log = logging.getLogger(__name__)
@@ -25,16 +27,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Resolve model path: supports remote/local URIs via downloader
+MODEL_URI = os.getenv("MODEL_URI")  # Optional alternative to MODEL_PATH for remote/local copy
 MODEL_PATH = os.getenv("MODEL_PATH", "/app/models")
 
 try:
-    log.info(f"Attempting to load model from: {MODEL_PATH}")
-    model = tf.keras.models.load_model(MODEL_PATH)
+    resolved_model_path = None
+    if MODEL_URI:
+        log.info(f"MODEL_URI provided, attempting to fetch: {MODEL_URI}")
+        resolved_model_path = maybe_download_model(MODEL_URI, MODEL_PATH)
+    else:
+        resolved_model_path = MODEL_PATH
+
+    log.info(f"Attempting to load model from: {resolved_model_path}")
+    model_service = ModelService.get_instance(resolved_model_path)
+    model_service.load()
     log.info("✅ Model loaded successfully")
 except Exception as e:
-    log.error(f"❌ Model not found: {e}")
+    log.error(f"❌ Model not found or failed to load: {e}")
     log.warning("Using placeholder predictions - this is for demonstration only")
-    model = None
+    model_service = None
 
 
 class HealthResponse(BaseModel):
@@ -75,9 +87,26 @@ async def root():
 async def health_check():
     """Health check endpoint"""
     log.debug("Health check requested")
-    return HealthResponse(
-        status="healthy" if model else "degraded",
-    )
+    return HealthResponse(status="healthy" if model_service and model_service.is_loaded() else "degraded")
+
+
+class PredictResponse(BaseModel):
+    predictions: list
+
+
+@app.post("/predict", response_model=PredictResponse)
+async def predict(file: UploadFile = File(...)):
+    if not model_service or not model_service.is_loaded():
+        return JSONResponse(status_code=503, content={"detail": "Model not available"})
+
+    image_bytes = await file.read()
+    input_tensor = preprocess_image(image_bytes)
+    if input_tensor is None:
+        return JSONResponse(status_code=400, content={"detail": "Invalid image"})
+
+    preds = model_service.predict(input_tensor)
+    # Convert to list for JSON serialization
+    return PredictResponse(predictions=preds.tolist())
 
 
 @app.exception_handler(Exception)
