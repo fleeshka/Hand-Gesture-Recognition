@@ -22,6 +22,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY code/deployment/api .
 
+# Copy model files into the image so the API can load them at runtime
+COPY models /app/models
+
 RUN mkdir -p /app/models
 
 EXPOSE 8000
