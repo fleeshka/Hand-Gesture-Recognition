@@ -758,16 +758,15 @@
                     const confidence = result.confidence ? Math.round(result.confidence * 100) : null;
                     const gestureText = this.formatGestureName(result.gesture);
                     
-                    // Update statistics
-                    if (this.lastGesture !== result.gesture) {
-                        this.totalGestures++;
+                    // Update statistics: count only when we got a valid confidence
+                    if (confidence !== null && !isNaN(confidence)) {
+                        // Ensure confidence is in 0..100 range
+                        const confVal = Math.max(0, Math.min(100, confidence));
+                        this.totalConfidence += confVal;
+                        this.totalGestures += 1;
                         this.lastGesture = result.gesture;
-                    }
-                    
-                    if (confidence !== null) {
-                        this.totalConfidence += confidence;
                         const avgConf = Math.round(this.totalConfidence / this.totalGestures);
-                        this.avgConfidence.textContent = `${avgConf}%`;
+                        this.avgConfidence.textContent = `${Math.min(100, avgConf)}%`;
                     }
                     
                     this.gestureCount.textContent = this.totalGestures;
