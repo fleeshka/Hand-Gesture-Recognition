@@ -183,7 +183,7 @@ class GestureModel:
         np.save('scaler_mean.npy', self.scaler.mean_)
         np.save('scaler_scale.npy', self.scaler.scale_)
     
-    def load_model(self, model_path='gesture_model.h5', metadata_path='model_metadata.json'):
+    def load_model(self, model_path='gesture_model.keras', metadata_path='model_metadata.json'):
         """Load trained model and metadata"""
         self.model = keras.models.load_model(model_path)
         
