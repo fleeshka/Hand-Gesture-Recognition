@@ -1,0 +1,12 @@
+              precision    recall  f1-score   support
+
+    civilian       0.87      0.87      0.87       300
+        cool       1.00      0.95      0.97       300
+         don       0.93      1.00      0.97       300
+          if       0.86      0.87      0.87       300
+       mafia       1.00      1.00      1.00       300
+    question       1.00      0.97      0.98       300
+
+    accuracy                           0.94      1800
+   macro avg       0.94      0.94      0.94      1800
+weighted avg       0.94      0.94      0.94      1800
