@@ -34,14 +34,17 @@ app.add_middleware(
 
 # Gesture classes (model trained for 3 classes: open hand, closed fist, ok)
 GESTURE_CLASSES = [
-    "open_hand",
-    "closed_fist",
-    "ok",
+    "don",
+    "if",
+    "question",
+    "mafia",
+    "cool",
+    "civilian", 
 ]
 
 # Model loading: support MODEL_DIR (directory) and MODEL_FILE (specific path).
 MODEL_DIR = os.getenv("MODEL_DIR", "/app/models")
-MODEL_FILE = os.getenv("MODEL_FILE", None)
+MODEL_FILE = os.getenv("MODEL_FILE", "/app/models/best_gesture_model.keras")
 
 def find_model_path():
     # Candidate locations (first that exists will be used)
@@ -49,14 +52,17 @@ def find_model_path():
     if MODEL_FILE:
         candidates.append(MODEL_FILE)
     # Common filenames inside MODEL_DIR
-    candidates.append(os.path.join(MODEL_DIR, "keypoint_classifier.keras"))
-    candidates.append(os.path.join(MODEL_DIR, "keypoint_classifier"))
-    candidates.append(MODEL_DIR)
+    candidates.append(os.path.join(MODEL_DIR, "best_gesture_model.keras"))
 
     # Try repository-relative location (useful for local development)
     # repo-relative path: go up three levels from api folder to repo root, then into models/
     repo_rel = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "models", "keypoint_classifier", "keypoint_classifier.keras"
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "..",
+        "..",
+        "models",
+        "best_gesture_model.keras",
     )
     candidates.append(repo_rel)
 
@@ -113,38 +119,6 @@ class ErrorResponse(BaseModel):
     detail: Optional[str] = None
 
 
-def preprocess_image(
-    image_bytes: bytes, target_size: tuple = (224, 224)
-) -> Optional[np.ndarray]:
-    """Preprocess image for model prediction"""
-    try:
-        # Convert bytes to numpy array
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        if img is None:
-            log.error("Failed to decode image")
-            return None
-
-        # Convert BGR to RGB
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-        # Resize image
-        img = cv2.resize(img, target_size)
-
-        # Normalize pixel values
-        img = img.astype(np.float32) / 255.0
-
-        # Add batch dimension
-        img = np.expand_dims(img, axis=0)
-
-        return img
-
-    except Exception as e:
-        log.error(f"Image preprocessing error: {e}")
-        return None
-
-
 def predict_gesture(image_bytes: bytes) -> dict:
     """Predict gesture from image bytes"""
     try:
@@ -158,19 +132,11 @@ def predict_gesture(image_bytes: bytes) -> dict:
         except Exception:
             input_shape = None
 
-        # If model expects 42 features, extract keypoints from image via MediaPipe
-        if input_shape and len(input_shape) >= 2 and int(input_shape[1]) == 42:
-            keypoints = extract_keypoints_from_image(image_bytes)
-            if keypoints is None:
-                return {"gesture": "unknown", "confidence": 0.0}
-            predictions = model.predict(keypoints, verbose=0)
-        else:
-            # Fallback: treat model as image-based and preprocess image
-            processed_image = preprocess_image(image_bytes)
-            if processed_image is None:
-                return {"gesture": "unknown", "confidence": 0.0}
-            predictions = model.predict(processed_image, verbose=0)
-        # Normalize outputs to probabilities (softmax) to get reliable confidences
+        keypoints = extract_keypoints_from_image(image_bytes)
+        if keypoints is None:
+            return {"gesture": "No hand detected", "confidence": 0.0}
+        predictions = model.predict(keypoints, verbose=0)
+
         try:
             arr = np.array(predictions[0], dtype=np.float32)
         except Exception:
@@ -216,9 +182,8 @@ def predict_gesture(image_bytes: bytes) -> dict:
         log.error(f"Prediction error: {e}")
         return {"gesture": "error", "confidence": 0.0}
 
-
 def extract_keypoints_from_image(image_bytes: bytes) -> Optional[np.ndarray]:
-    """Use MediaPipe to extract 21 hand landmarks (x,y) -> 42 values and return shape (1,42) array.
+    """Use MediaPipe to extract 21 hand landmarks (x,y,z) + is_right_hand -> 64 values and return shape (1,64) array.
 
     Returns None if no hand detected or on error.
     """
@@ -236,23 +201,37 @@ def extract_keypoints_from_image(image_bytes: bytes) -> Optional[np.ndarray]:
         # Convert to RGB for MediaPipe
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        with mp_hands.Hands(static_image_mode=True, max_num_hands=1, min_detection_confidence=0.5) as hands:
-            results = hands.process(img_rgb)
+        with mp_hands.Hands(static_image_mode=True, max_num_hands=1, min_detection_confidence=0.9, min_tracking_confidence=0.7) as hands:
+            frame_mirrored = cv2.flip(img_rgb, 1)
+            results = hands.process(frame_mirrored)
             if not results.multi_hand_landmarks:
                 return None
 
             hand_landmarks = results.multi_hand_landmarks[0]
+            handedness_label = results.multi_handedness[0].classification[0].label
+
+            is_right = 1 if handedness_label == "Right" else 0
+
+            # Wrist для нормализации
+            wrist = hand_landmarks.landmark[0]
+            wx, wy, wz = wrist.x, wrist.y, wrist.z
+
+            # Масштаб — максимальная дистанция от запястья
+            distances = [np.linalg.norm([lm.x - wx, lm.y - wy, lm.z - wz])
+                        for lm in hand_landmarks.landmark]
+            scale = max(distances)
+
             coords = []
             for lm in hand_landmarks.landmark:
-                # Use normalized x,y coordinates as provided by MediaPipe
-                coords.append(float(lm.x))
-                coords.append(float(lm.y))
+                coords.extend([
+                    (lm.x - wx) / scale,
+                    (lm.y - wy) / scale,
+                    (lm.z - wz) / scale
+                ])
 
-            if len(coords) != 42:
-                log.error(f"Unexpected number of keypoints: {len(coords)}")
-                return None
+            coords.append(is_right)
 
-            arr = np.array(coords, dtype=np.float32).reshape(1, 42)
+            arr = np.array(coords, dtype=np.float32).reshape(1, -1)
             return arr
 
     except Exception as e:

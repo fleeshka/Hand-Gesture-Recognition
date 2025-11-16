@@ -14,7 +14,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: api/Dockerfile
+      dockerfile: code/deployment/api/Dockerfile
     ports:
       - "8000:8000"
     volumes:
