@@ -93,7 +93,7 @@ try:
 except Exception as e:
     log.error(f"❌ Model load failed: {e}")
     log.warning("Using placeholder predictions - this is for demonstration only")
-    model = None
+    model_service = None
 
 
 class HealthResponse(BaseModel):

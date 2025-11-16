@@ -6,3 +6,5 @@ __pycache__
 .log
 /.venv
 kaggle.json
+data/
+models/
