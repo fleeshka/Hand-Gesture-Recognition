@@ -653,8 +653,8 @@
                     
                     const constraints = {
                         video: {
-                            width: { ideal: 640 },
-                            height: { ideal: 480 },
+                            width: { exact: 640 },
+                            height: { exact: 480 },
                             facingMode: 'user'
                         }
                     };
@@ -785,28 +785,27 @@
 
             getGestureEmoji(gesture) {
                 const emojiMap = {
-                    'thumbs_up': '👍',
-                    'thumbs_down': '👎',
-                    'peace': '✌️',
-                    'ok': '👌',
-                    'fist': '✊',
-                    'open_palm': '🖐️',
-                    'open_hand': '🖐️',
-                    'point': '👉',
-                    'rock': '🤘',
-                    'wave': '👋',
-                    'stop': '✋'
+                    'civilian': '👍',
+                    'mafia': '👎',
+                    'sheriff': '👌',
+                    'don': '🎩',
+                    'if': '🤙',
+                    'question': '❓',
+                    'cool': '🤘'
                 };
-                return emojiMap[gesture] || '🤚';
+                return emojiMap[gesture] || ' ';
             }
             
             formatGestureName(gesture) {
                 // Friendly display names for gestures
                 const friendlyMap = {
-                    'open_palm': 'Open Hand',
-                    'open_hand': 'Open Hand',
-                    'thumbs_up': 'Thumbs Up',
-                    'thumbs_down': 'Thumbs Down'
+                    'civilian': 'Сivilian 👍',
+                    'mafia': 'Mafia 👎',
+                    'sheriff': 'Sheriff 👌',
+                    'don': 'Don 🎩',
+                    'if': 'If 🤙',
+                    'question': 'Guestion ❓',
+                    'cool': 'Cool 🤘'
                 };
                 if (friendlyMap[gesture]) return friendlyMap[gesture];
                 // Default: snake_case -> Title Case
