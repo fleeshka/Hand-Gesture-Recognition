@@ -758,16 +758,15 @@
                     const confidence = result.confidence ? Math.round(result.confidence * 100) : null;
                     const gestureText = this.formatGestureName(result.gesture);
                     
-                    // Update statistics
-                    if (this.lastGesture !== result.gesture) {
-                        this.totalGestures++;
+                    // Update statistics: count only when we got a valid confidence
+                    if (confidence !== null && !isNaN(confidence)) {
+                        // Ensure confidence is in 0..100 range
+                        const confVal = Math.max(0, Math.min(100, confidence));
+                        this.totalConfidence += confVal;
+                        this.totalGestures += 1;
                         this.lastGesture = result.gesture;
-                    }
-                    
-                    if (confidence !== null) {
-                        this.totalConfidence += confidence;
                         const avgConf = Math.round(this.totalConfidence / this.totalGestures);
-                        this.avgConfidence.textContent = `${avgConf}%`;
+                        this.avgConfidence.textContent = `${Math.min(100, avgConf)}%`;
                     }
                     
                     this.gestureCount.textContent = this.totalGestures;
@@ -792,6 +791,7 @@
                     'ok': '👌',
                     'fist': '✊',
                     'open_palm': '🖐️',
+                    'open_hand': '🖐️',
                     'point': '👉',
                     'rock': '🤘',
                     'wave': '👋',
@@ -801,7 +801,15 @@
             }
             
             formatGestureName(gesture) {
-                // Convert snake_case to Title Case
+                // Friendly display names for gestures
+                const friendlyMap = {
+                    'open_palm': 'Open Hand',
+                    'open_hand': 'Open Hand',
+                    'thumbs_up': 'Thumbs Up',
+                    'thumbs_down': 'Thumbs Down'
+                };
+                if (friendlyMap[gesture]) return friendlyMap[gesture];
+                // Default: snake_case -> Title Case
                 return gesture
                     .split('_')
                     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
