@@ -201,7 +201,7 @@ class GestureModel:
 class RealTimeGesturePredictor:
     def __init__(self, model_path='gesture_model.keras', metadata_path='model_metadata.json'):
         """Initialize real-time gesture predictor with trained model"""
-        self.gesture_model = GestureModel(num_classes=3)
+        self.gesture_model = GestureModel(num_classes=5)
         self.gesture_model.load_model(model_path, metadata_path)
         
         # Initialize MediaPipe Hands for landmark detection
@@ -298,63 +298,71 @@ def plot_training_history(history):
 
 def main():
     """Main training function"""
-    csv_files = ['mafia.csv', 'if.csv', 'sheriff.csv']
-    
+    csv_files = [
+        "mafia.csv",
+        "if.csv",
+        "sheriff.csv",
+        "question1.csv",
+        "question2.csv",
+        "question3.csv",
+        "question4.csv",
+        "question5.csv",
+        "question_g.csv",
+        "question_k.csv",
+        "don.csv",
+        "don_k.csv",
+        "don_g.csv",
+    ]
+
     # Initialize and train model
-    gesture_model = GestureModel(num_classes=3)
-    
+    gesture_model = GestureModel(num_classes=5)
+
     print("\nLoading data...")
     X, y = gesture_model.load_and_preprocess_data(csv_files)
-    
+
     print(f"Loaded {len(X)} samples")
     print(f"Feature dimension: {X.shape}")  # Should be (n_samples, 43)
     print(f"Classes: {np.unique(y)}")
-    
-    # Analyze hand feature distribution
-    hand_feature = X[:, -1]  # Last feature is is_right_hand
-    print(f"\nHand feature distribution:")
-    print(f"  Right hand samples: {np.sum(hand_feature == 1)} ({np.mean(hand_feature == 1)*100:.1f}%)")
-    print(f"  Left hand samples: {np.sum(hand_feature == 0)} ({np.mean(hand_feature == 0)*100:.1f}%)")
-    
+
     # Create model architecture
     print("\nCreating model...")
     model = gesture_model.create_advanced_model(input_shape=(43,))  # 42 landmarks + 1 hand info
-    
+
     model.summary()
-    
+
     # Train the model
     print("Starting training...")
     history = gesture_model.train(X, y, epochs=10, batch_size=32)
-    
+
     # Evaluate model performance
     print("Evaluating model...")
     loss, accuracy, precision, recall = gesture_model.evaluate(X, y)
     print(f"Final Accuracy: {accuracy:.4f}")
     print(f"Final Precision: {precision:.4f}")
     print(f"Final Recall: {recall:.4f}")
-    
+
     # Save trained model
     print("Saving model...")
     gesture_model.save_model()
-    
+
     # Plot training history
     plot_training_history(history)
-    
+
     # Analyze accuracy by hand type
     print("\nAnalyzing accuracy by hand type:")
     predictions = gesture_model.predict(X)
     hand_info = X[:, -1]  # is_right_hand feature
-    
+
     # Accuracy for right hand
     right_mask = hand_info == 1
     right_accuracy = np.mean(predictions[right_mask] == y[right_mask])
     print(f"Accuracy for right hand: {right_accuracy:.4f} ({np.sum(right_mask)} samples)")
-    
+
     # Accuracy for left hand
     left_mask = hand_info == 0
     left_accuracy = np.mean(predictions[left_mask] == y[left_mask])
     print(f"Accuracy for left hand: {left_accuracy:.4f} ({np.sum(left_mask)} samples)")
-    
+
     # Test on random samples
     print("\nTesting on random samples:")
     sample_indices = np.random.randint(0, len(X), 10)
@@ -367,7 +375,7 @@ def main():
         correct += is_correct
         hand_type = "right" if hand_info[idx] == 1 else "left"
         print(f"True: {true_label:10} Predicted: {pred_label:10} Hand: {hand_type:5} {'✓' if is_correct else '✗'}")
-    
+
     print(f"Sample accuracy: {correct/10:.2f}")
 
 def real_time_demo():
@@ -390,7 +398,7 @@ def real_time_demo():
         gesture, confidence, hand_info = predictor.predict_gesture(image)
         
         if gesture:
-            hand_text = "Right" if hand_info == 1.0 else "Left"
+            hand_text = "Right" if hand_info == 0 else "Left"
             
             # Update statistics
             key = f"{gesture}_{hand_text}"
@@ -437,7 +445,6 @@ def real_time_demo():
         print(f"  {gesture_hand}: {count} frames")
 
 if __name__ == "__main__":
-    main()
     
     # Launch real-time demo after training
     print("\nLaunching real-time gesture recognition...")
