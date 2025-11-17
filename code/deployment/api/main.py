@@ -32,14 +32,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Gesture classes (model trained for 3 classes: open hand, closed fist, ok)
+# Gesture classes
 GESTURE_CLASSES = [
     "don",
-    "if",
-    "question",
     "mafia",
-    "cool",
-    "civilian", 
+    "if"
 ]
 
 # Model loading: support MODEL_DIR (directory) and MODEL_FILE (specific path).
@@ -201,9 +198,14 @@ def extract_keypoints_from_image(image_bytes: bytes) -> Optional[np.ndarray]:
         # Convert to RGB for MediaPipe
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        with mp_hands.Hands(static_image_mode=True, max_num_hands=1, min_detection_confidence=0.9, min_tracking_confidence=0.7) as hands:
-            frame_mirrored = cv2.flip(img_rgb, 1)
-            results = hands.process(frame_mirrored)
+        with mp_hands.Hands(
+            static_image_mode=True,
+            max_num_hands=1,
+            min_detection_confidence=0.7,
+            min_tracking_confidence=0.5,
+        ) as hands:
+
+            results = hands.process(img_rgb)
             if not results.multi_hand_landmarks:
                 return None
 
@@ -212,26 +214,35 @@ def extract_keypoints_from_image(image_bytes: bytes) -> Optional[np.ndarray]:
 
             is_right = 1 if handedness_label == "Right" else 0
 
-            # Wrist для нормализации
-            wrist = hand_landmarks.landmark[0]
-            wx, wy, wz = wrist.x, wrist.y, wrist.z
+            # Extract landmarks properly
+            landmarks = []
+            for landmark in hand_landmarks.landmark:
+                landmarks.extend([landmark.x, landmark.y, landmark.z])
 
-            # Масштаб — максимальная дистанция от запястья
-            distances = [np.linalg.norm([lm.x - wx, lm.y - wy, lm.z - wz])
-                        for lm in hand_landmarks.landmark]
-            scale = max(distances)
+            # Используем нормализацию относительно центра ладони как при обучении
+            landmarks_array = np.array(landmarks).reshape(-1, 3)
 
-            coords = []
-            for lm in hand_landmarks.landmark:
-                coords.extend([
-                    (lm.x - wx) / scale,
-                    (lm.y - wy) / scale,
-                    (lm.z - wz) / scale
+            # Центр ладони
+            center_x = np.mean(landmarks_array[:, 0])
+            center_y = np.mean(landmarks_array[:, 1])
+            center_z = np.mean(landmarks_array[:, 2])
+
+            # Масштаб (стандартное отклонение)
+            distances = np.linalg.norm(landmarks_array - np.array([center_x, center_y, center_z]), axis=1)
+            scale = np.std(distances) if np.std(distances) > 1e-6 else 1e-6
+
+            # Нормализованные координаты
+            normalized_coords = []
+            for x, y, z in landmarks_array:
+                normalized_coords.extend([
+                    (x - center_x) / scale,
+                    (y - center_y) / scale,
+                    (z - center_z) / scale
                 ])
 
-            coords.append(is_right)
+            normalized_coords.append(is_right)
 
-            arr = np.array(coords, dtype=np.float32).reshape(1, -1)
+            arr = np.array(normalized_coords, dtype=np.float32).reshape(1, -1)
             return arr
 
     except Exception as e:
