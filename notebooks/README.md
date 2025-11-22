@@ -6,7 +6,6 @@ This directory contains Jupyter notebooks and related files for the hand gesture
 1. **dataset_collection.ipynb** → Collects raw gesture data
 2. **prepare_data_training.ipynb** → Aggregates and analyzes data
 3. **model_training.ipynb** → Trains model (optionally uses gridsearch results for hyperparameter selection)
-4. **gridsearch_cv_results.csv** → Supports hyperparameter optimization during training
 
 ## Overview
 
