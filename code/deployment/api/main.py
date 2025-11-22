@@ -5,9 +5,7 @@ import logging
 import uvicorn
 import numpy as np
 import cv2
-# TensorFlow is imported lazily during model loading to allow running the API
-# in demo mode on machines without TF installed.
-tf = None
+import pickle
 from pydantic import BaseModel
 import os
 import io
@@ -32,16 +30,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Gesture classes (model trained for 3 classes: open hand, closed fist, ok)
-GESTURE_CLASSES = [
-    "open_hand",
-    "closed_fist",
-    "ok",
-]
+# Gesture classes (will be loaded from model's label encoder)
+GESTURE_CLASSES = []
 
 # Model loading: support MODEL_DIR (directory) and MODEL_FILE (specific path).
 MODEL_DIR = os.getenv("MODEL_DIR", "/app/models")
-MODEL_FILE = os.getenv("MODEL_FILE", None)
+MODEL_FILE = os.getenv("MODEL_FILE", "/app/models/gesture_lr.pkl")
 
 def find_model_path():
     # Candidate locations (first that exists will be used)
@@ -49,16 +43,18 @@ def find_model_path():
     if MODEL_FILE:
         candidates.append(MODEL_FILE)
     # Common filenames inside MODEL_DIR
-    candidates.append(os.path.join(MODEL_DIR, "keypoint_classifier.keras"))
-    candidates.append(os.path.join(MODEL_DIR, "keypoint_classifier"))
-    candidates.append(MODEL_DIR)
+    candidates.append(os.path.join(MODEL_DIR, "gesture_lr.pkl"))
 
-    # Try repository-relative location (useful for local development)
+    # Try repository-relative locations (useful for local development)
     # repo-relative path: go up three levels from api folder to repo root, then into models/
-    repo_rel = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "models", "keypoint_classifier", "keypoint_classifier.keras"
+    repo_root = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "..",
+        "..",
     )
-    candidates.append(repo_rel)
+    candidates.append(os.path.join(repo_root, "models", "gesture_lr.pkl"))
+    candidates.append(os.path.join(repo_root, "notebooks", "gesture_lr.pkl"))
 
     for p in candidates:
         try:
@@ -68,32 +64,40 @@ def find_model_path():
             continue
     return None
 
+# Model and label encoder
 model = None
+label_encoder = None
+
 try:
     selected = find_model_path()
     if selected:
         log.info(f"Attempting to load model from: {selected}")
         try:
-            # Import tensorflow only when we need to load the model
-            import tensorflow as _tf
-            tf = _tf
-            model = tf.keras.models.load_model(selected)
-            log.info("✅ Model loaded successfully")
+            with open(selected, "rb") as f:
+                model_data = pickle.load(f)
+                model = model_data["model"]
+                label_encoder = model_data["label_encoder"]
+                GESTURE_CLASSES = list(label_encoder.classes_)
+            log.info("✅ Model loaded successfully (sklearn LogisticRegression)")
+            log.info(f"Gesture classes: {GESTURE_CLASSES}")
             try:
-                log.info(f"Model input shape: {model.input_shape}")
-                log.info(f"Model output shape: {model.output_shape}")
+                log.info(f"Model type: {type(model).__name__}")
+                log.info(f"Number of classes: {len(GESTURE_CLASSES)}")
             except Exception:
                 pass
         except Exception as e:
-            # If tensorflow isn't available or model fails to load, log and continue with demo mode.
-            log.error(f"TensorFlow/model load error: {e}")
+            log.error(f"Model load error: {e}")
+            import traceback
+            log.error(traceback.format_exc())
             model = None
+            label_encoder = None
     else:
         raise FileNotFoundError(f"No model file found. Checked candidates. Set MODEL_FILE or place model under {MODEL_DIR}")
 except Exception as e:
     log.error(f"❌ Model load failed: {e}")
     log.warning("Using placeholder predictions - this is for demonstration only")
-    model_service = None
+    model = None
+    label_encoder = None
 
 
 class HealthResponse(BaseModel):
@@ -113,94 +117,31 @@ class ErrorResponse(BaseModel):
     detail: Optional[str] = None
 
 
-def preprocess_image(
-    image_bytes: bytes, target_size: tuple = (224, 224)
-) -> Optional[np.ndarray]:
-    """Preprocess image for model prediction"""
-    try:
-        # Convert bytes to numpy array
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        if img is None:
-            log.error("Failed to decode image")
-            return None
-
-        # Convert BGR to RGB
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-        # Resize image
-        img = cv2.resize(img, target_size)
-
-        # Normalize pixel values
-        img = img.astype(np.float32) / 255.0
-
-        # Add batch dimension
-        img = np.expand_dims(img, axis=0)
-
-        return img
-
-    except Exception as e:
-        log.error(f"Image preprocessing error: {e}")
-        return None
-
-
 def predict_gesture(image_bytes: bytes) -> dict:
-    """Predict gesture from image bytes"""
+    """Predict gesture from image bytes using sklearn LogisticRegression"""
     try:
         # If no model, return demo
-        if model is None:
+        if model is None or label_encoder is None:
             return demo_prediction()
 
-        # Decide whether model expects keypoints (e.g., input shape (None, 42))
-        try:
-            input_shape = model.input_shape
-        except Exception:
-            input_shape = None
+        keypoints = extract_keypoints_from_image(image_bytes)
+        if keypoints is None:
+            return {"gesture": "No hand detected", "confidence": 0.0}
 
-        # If model expects 42 features, extract keypoints from image via MediaPipe
-        if input_shape and len(input_shape) >= 2 and int(input_shape[1]) == 42:
-            keypoints = extract_keypoints_from_image(image_bytes)
-            if keypoints is None:
-                return {"gesture": "unknown", "confidence": 0.0}
-            predictions = model.predict(keypoints, verbose=0)
-        else:
-            # Fallback: treat model as image-based and preprocess image
-            processed_image = preprocess_image(image_bytes)
-            if processed_image is None:
-                return {"gesture": "unknown", "confidence": 0.0}
-            predictions = model.predict(processed_image, verbose=0)
-        # Normalize outputs to probabilities (softmax) to get reliable confidences
-        try:
-            arr = np.array(predictions[0], dtype=np.float32)
-        except Exception:
-            arr = np.array(predictions, dtype=np.float32).reshape(-1)
-
-        try:
-            if tf is not None:
-                probs = tf.nn.softmax(arr).numpy()
-            else:
-                exps = np.exp(arr - np.max(arr))
-                probs = exps / np.sum(exps)
-        except Exception:
-            exps = np.exp(arr - np.max(arr))
-            probs = exps / np.sum(exps)
-
+        # Get prediction probabilities
+        probs = model.predict_proba(keypoints)[0]
+        
+        # Get predicted class index
         predicted_class_idx = int(np.argmax(probs))
         confidence = float(probs[predicted_class_idx])
 
-        # Get gesture name
-        if predicted_class_idx < len(GESTURE_CLASSES):
-            gesture_name = GESTURE_CLASSES[predicted_class_idx]
-        else:
-            gesture_name = f"class_{predicted_class_idx}"
+        # Get gesture name from label encoder
+        gesture_name = label_encoder.inverse_transform([predicted_class_idx])[0]
 
         # Get all predictions for debugging
         all_predictions = []
         for i, prob in enumerate(probs):
-            class_name = (
-                GESTURE_CLASSES[i] if i < len(GESTURE_CLASSES) else f"class_{i}"
-            )
+            class_name = label_encoder.inverse_transform([i])[0]
             all_predictions.append({"class": class_name, "confidence": float(prob)})
 
         # Sort by confidence
@@ -214,11 +155,12 @@ def predict_gesture(image_bytes: bytes) -> dict:
 
     except Exception as e:
         log.error(f"Prediction error: {e}")
+        import traceback
+        log.error(traceback.format_exc())
         return {"gesture": "error", "confidence": 0.0}
 
-
 def extract_keypoints_from_image(image_bytes: bytes) -> Optional[np.ndarray]:
-    """Use MediaPipe to extract 21 hand landmarks (x,y) -> 42 values and return shape (1,42) array.
+    """Use MediaPipe to extract 21 hand landmarks (x,y,z) + is_right_hand -> 64 values and return shape (1,64) array.
 
     Returns None if no hand detected or on error.
     """
@@ -236,23 +178,53 @@ def extract_keypoints_from_image(image_bytes: bytes) -> Optional[np.ndarray]:
         # Convert to RGB for MediaPipe
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        with mp_hands.Hands(static_image_mode=True, max_num_hands=1, min_detection_confidence=0.5) as hands:
+        with mp_hands.Hands(
+            static_image_mode=True,
+            max_num_hands=1,
+            min_detection_confidence=0.7,
+            min_tracking_confidence=0.5,
+        ) as hands:
+
             results = hands.process(img_rgb)
             if not results.multi_hand_landmarks:
                 return None
 
             hand_landmarks = results.multi_hand_landmarks[0]
-            coords = []
+            handedness_label = results.multi_handedness[0].classification[0].label
+
+            is_right = 1 if handedness_label == "Right" else 0
+
+            # Нормализация относительно wrist (landmark[0]), как в notebook lr.ipynb
+            wrist = hand_landmarks.landmark[0]
+            wrist_x = wrist.x
+            wrist_y = wrist.y
+            wrist_z = wrist.z
+
+            # Вычисляем расстояния от wrist до всех landmarks
+            distances = []
             for lm in hand_landmarks.landmark:
-                # Use normalized x,y coordinates as provided by MediaPipe
-                coords.append(float(lm.x))
-                coords.append(float(lm.y))
+                dist = np.linalg.norm([
+                    lm.x - wrist_x,
+                    lm.y - wrist_y,
+                    lm.z - wrist_z
+                ])
+                distances.append(dist)
 
-            if len(coords) != 42:
-                log.error(f"Unexpected number of keypoints: {len(coords)}")
-                return None
+            # Масштаб = максимальное расстояние
+            scale = max(distances) if max(distances) > 1e-6 else 1e-6
 
-            arr = np.array(coords, dtype=np.float32).reshape(1, 42)
+            # Нормализованные координаты относительно wrist
+            normalized_coords = []
+            for lm in hand_landmarks.landmark:
+                x = (lm.x - wrist_x) / scale
+                y = (lm.y - wrist_y) / scale
+                z = (lm.z - wrist_z) / scale
+                normalized_coords.extend([x, y, z])
+
+            # Добавляем is_right_hand в конец
+            normalized_coords.append(is_right)
+
+            arr = np.array(normalized_coords, dtype=np.float32).reshape(1, -1)
             return arr
 
     except Exception as e:
@@ -296,7 +268,7 @@ async def root():
             "predict": "/predict",
             "docs": "/docs",
         },
-        "model_loaded": model is not None,
+        "model_loaded": (model is not None and label_encoder is not None),
         "gesture_classes": GESTURE_CLASSES,
     }
 
@@ -306,8 +278,8 @@ async def health_check():
     """Health check endpoint"""
     log.debug("Health check requested")
     return HealthResponse(
-        status="healthy" if model else "degraded",
-        model_loaded=model is not None,
+        status="healthy" if (model is not None and label_encoder is not None) else "degraded",
+        model_loaded=(model is not None and label_encoder is not None),
         gesture_classes=GESTURE_CLASSES,
     )
 
@@ -329,7 +301,7 @@ async def predict_gesture_endpoint(file: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail="Empty file uploaded")
 
         # Make prediction
-        if model:
+        if model and label_encoder:
             result = predict_gesture(image_data)
         else:
             result = demo_prediction()

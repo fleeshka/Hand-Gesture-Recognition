@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Hand Gesture Recognition - Home</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="floating-shapes">
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+    </div>
+
+    <nav class="nav-bar">
+        <a href="home.html" class="nav-btn active">🏠 Home</a>
+        <a href="game.html" class="nav-btn">🎮 Game</a>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>AI Hand Gesture Recognition</h1>
+            <p>Experience the future of human-computer interaction with real-time gesture recognition powered by artificial intelligence</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="video-section">
+                <div class="video-container">
+                    <video id="video" width="640" height="480" autoplay muted playsinline></video>
+                </div>
+                
+                <canvas id="canvas" width="640" height="480"></canvas>
+                
+                <div class="controls">
+                    <button id="toggleButton" class="btn">🎥 Start Camera</button>
+                </div>
+
+                <div class="feature-icons">
+                    <div class="feature-icon" title="Real-time Processing">⚡</div>
+                    <div class="feature-icon" title="AI Powered">🤖</div>
+                    <div class="feature-icon" title="High Accuracy">🎯</div>
+                    <div class="feature-icon" title="Secure">🔒</div>
+                </div>
+            </div>
+
+            <div class="results-section">
+                <div class="result-container">
+                    <div id="gestureResult" class="placeholder">Click "Start Camera" to begin gesture recognition</div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="gestureCount">0</div>
+                        <div class="stat-label">Gestures Detected</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="avgConfidence">0%</div>
+                        <div class="stat-label">Avg Confidence</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        
+        <div id="status" class="status"></div>
+    </div>
+
+    <script src="../js/home.js"></script>
+</body>
+</html>
+
