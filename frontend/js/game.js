@@ -163,7 +163,7 @@ class GestureGame {
         });
         
         this.backToMenuBtn.addEventListener('click', () => {
-            window.location.href = 'pages/home.html';
+            window.location.href = 'home.html';
         });
     }
     
