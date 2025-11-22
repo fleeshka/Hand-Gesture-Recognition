@@ -77,6 +77,7 @@ This realization achieves the project goals with efficient, real-time performanc
    * Prediction delay ≤ 200 ms per frame
    * Target ≥ 25 FPS on a standard laptop webcam
 4. Usability & Stability: recognizes gestures consistently without false positives
+<<<<<<< HEAD
 5. Frontend: intuitive web interface with real-time recognition and gamification features
 
 ---
@@ -204,3 +205,6 @@ frontend/
 - **Nginx**: Configured for static file serving and API proxying
 - **Static Assets**: Optimized for production with caching headers
 
+=======
+5. Deployment: Successful containerization and API deployment for easy distribution and access
+>>>>>>> 0c067371d76007d098bc42c23a534d96f6f62062
