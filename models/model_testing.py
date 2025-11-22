@@ -1,150 +1,108 @@
 import cv2
-import torch
-from torch import nn
 import mediapipe as mp
 import numpy as np
 import pickle
-import os
+import time
+from collections import deque
 
-# --------------------------
-# 1. Model definition
-# --------------------------
-class GestureMLP(nn.Module):
-    def __init__(self, input_dim, num_classes):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(input_dim, 64),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(64, num_classes)
-        )
-    def forward(self, x):
-        return self.net(x)
+# PUT NAME OF YOUR MODEL FILE 
+MODEL_FILEPATH="models/gesture_lr.pkl"
 
+with open(MODEL_FILEPATH, "rb") as f:
+    obj = pickle.load(f)
 
-# --------------------------
-# 2. Load artifacts
-# --------------------------
-ARTIFACT_DIR = "models"
+clf = obj["model"]
+le = obj["label_encoder"]
 
-with open(os.path.join(ARTIFACT_DIR, "scaler.pkl"), "rb") as f:
-    scaler = pickle.load(f)
-
-with open(os.path.join(ARTIFACT_DIR, "label_encoder.pkl"), "rb") as f:
-    le = pickle.load(f)
-
-input_dim = 21 * 3 + 1  # 63 coords + is_right_hand = 64
-num_classes = len(le.classes_)
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-model = GestureMLP(input_dim, num_classes)
-model.load_state_dict(torch.load(os.path.join(ARTIFACT_DIR, "model_small.pth"), map_location=device))
-model.to(device)
-model.eval()
-
-print("Model loaded. Classes:", le.classes_)
-
-
-# --------------------------
-# 3. Mediapipe
-# --------------------------
 mp_hands = mp.solutions.hands
-mp_draw = mp.solutions.drawing_utils
 
 hands = mp_hands.Hands(
+    static_image_mode=False,
     max_num_hands=1,
-    model_complexity=0,
     min_detection_confidence=0.8,
-    min_tracking_confidence=0.5
+    min_tracking_confidence=0.5,
 )
 
-
-# --------------------------
-# 4. Camera
-# --------------------------
 cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-print("Starting camera...")
 
+fps_history = deque(maxlen=10)
+last_time = time.time()
 
-# --------------------------
-# 5. Frame loop
-# --------------------------
 while True:
     ret, frame = cap.read()
     if not ret:
-        continue
+        break
 
-    frame = cv2.flip(frame, 1)
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    result = hands.process(frame_rgb)
+    now = time.time()
+    fps = 1.0 / (now - last_time)
+    last_time = now
+    fps_history.append(fps)
+    smooth_fps = sum(fps_history) / len(fps_history)
 
-    prediction_text = "No hand detected"
+    frame_mirrored = cv2.flip(frame, 1)
+    image_rgb = cv2.cvtColor(frame_mirrored, cv2.COLOR_BGR2RGB)
+    result = hands.process(image_rgb)
+
+    gesture_text = "No hand"
+    conf_text = ""
 
     if result.multi_hand_landmarks and result.multi_handedness:
-        lm = result.multi_hand_landmarks[0]
-        handed_label = result.multi_handedness[0].classification[0].label
-        is_right = 1 if handed_label == "Right" else 0
+        hand_landmarks = result.multi_hand_landmarks[0]
+        handedness_obj = result.multi_handedness[0].classification[0]
+        handedness = handedness_obj.label
+        confidence = handedness_obj.score 
+        conf_text = f"{confidence:.2f}"
 
-        # --------------------------
-        # Wrist for normalization
-        # --------------------------
-        wrist = lm.landmark[0]
-        wx, wy, wz = wrist.x, wrist.y, wrist.z
+        is_right = 1 if handedness == "Right" else 0
 
-        # --------------------------
-        # Scale (max distance from wrist)
-        # --------------------------
-        distances = [np.linalg.norm([p.x - wx, p.y - wy, p.z - wz]) for p in lm.landmark]
-        scale = max(distances) if max(distances) > 1e-6 else 1e-6
+        wrist_x = hand_landmarks.landmark[0].x
+        wrist_y = hand_landmarks.landmark[0].y
+        wrist_z = hand_landmarks.landmark[0].z
 
-        # --------------------------
-        # Feature vector in exact training format
-        # x0,y0,z0,x1,y1,z1,...x20,y20,z20,is_right_hand
-        # --------------------------
-        coords = []
-        for i, p in enumerate(lm.landmark):
-            coords.extend([
-                (p.x - wx) / scale,
-                (p.y - wy) / scale,
-                (p.z - wz) / scale
+
+        distances = [
+            np.linalg.norm([
+                lm.x - wrist_x,
+                lm.y - wrist_y,
+                lm.z - wrist_z
             ])
 
-        # Append hand flag at the end
-        coords.append(is_right)
+            for lm in hand_landmarks.landmark
+        ]
 
-        coords = np.array(coords, dtype=np.float32).reshape(1, -1)
-        coords_scaled = scaler.transform(coords)  # same scaler as training
+        scale = max(distances)
+        coords = []
 
-        X_tensor = torch.tensor(coords_scaled, dtype=torch.float32).to(device)
+        for lm in hand_landmarks.landmark:
+            x = (lm.x - wrist_x) / scale
+            y = (lm.y - wrist_y) / scale
+            z = (lm.z - wrist_z) / scale
+            coords.extend([x, y, z])
 
-        # --------------------------
-        # Model prediction
-        # --------------------------
-        with torch.no_grad():
-            logits = model(X_tensor)
-            probs = torch.softmax(logits, dim=1)[0]
-            class_id = torch.argmax(probs).item()
-            confidence = probs[class_id].item()
 
-        gesture_name = le.inverse_transform([class_id])[0]
 
-        prediction_text = f"{handed_label} | {gesture_name} ({confidence:.2f})"
+        input_vec = np.array(coords + [is_right]).reshape(1, -1)
+        pred_class = clf.predict(input_vec)[0]
+        gesture_text = le.inverse_transform([pred_class])[0]
 
-        mp_draw.draw_landmarks(frame, lm, mp_hands.HAND_CONNECTIONS)
 
-    # --------------------------
-    # Display
-    # --------------------------
-    cv2.putText(frame, prediction_text, (10, 40),
-                cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
 
-    cv2.imshow("Gesture Recognition", frame)
+    cv2.putText(frame_mirrored, f"Gesture: {gesture_text}",
 
-    if cv2.waitKey(1) & 0xFF == 27:
+                (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (200, 200, 0), 3)
+
+    cv2.putText(frame_mirrored, f"Conf: {conf_text}",
+                (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 200, 255), 3)
+
+    cv2.putText(frame_mirrored, f"FPS: {smooth_fps:.1f}",
+                (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 200, 0), 3)
+
+
+    cv2.imshow("Gesture Recognition", frame_mirrored)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
 cap.release()
+hands.close()
 cv2.destroyAllWindows()
