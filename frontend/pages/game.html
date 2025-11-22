@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Hand Gesture Recognition - Game</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="floating-shapes">
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+    </div>
+
+    <nav class="nav-bar">
+        <a href="home.html" class="nav-btn">🏠 Home</a>
+        <a href="game.html" class="nav-btn active">🎮 Game</a>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Gesture Game</h1>
+            <p>Choose your difficulty level and test your gesture recognition skills!</p>
+        </div>
+        
+        <div id="difficultySelector" class="difficulty-selector">
+            <div class="difficulty-btn" data-difficulty="easy">
+                <h3>⭐ Easy</h3>
+                <p>Show the gesture that appears on screen</p>
+            </div>
+            
+            <div class="difficulty-btn" data-difficulty="medium">
+                <h3>⭐⭐ Medium</h3>
+                <p>Complete simple sentences with gestures</p>
+            </div>
+            
+            <div class="difficulty-btn" data-difficulty="hard">
+                <h3>⭐⭐⭐ Hard</h3>
+                <p>Complete complex sentences with gestures</p>
+            </div>
+        </div>
+        
+        <div id="gameContainer" class="game-container">
+            <div class="game-main-content">
+                <div class="game-info-section">
+                    <div class="game-score-compact">
+                        <div class="score-card">
+                            <div class="score-label">Score</div>
+                            <div class="score-value" id="gameScore">0</div>
+                        </div>
+                        <div class="score-card">
+                            <div class="score-label">Round</div>
+                            <div class="score-value" id="gameRound">0/10</div>
+                        </div>
+                        <div class="score-card">
+                            <div class="score-label">Correct</div>
+                            <div class="score-value" id="gameCorrect">0</div>
+                        </div>
+                        <div class="score-card">
+                            <div class="score-label">Time</div>
+                            <div class="score-value time" id="gameTimer">25</div>
+                        </div>
+                    </div>
+                    
+                    <div class="game-challenge">
+                        <div class="challenge-text" id="challengeText">Ready to start?</div>
+                        <div class="challenge-hint" id="challengeHint"></div>
+                        <div class="gesture-sequence" id="gestureSequence"></div>
+                        <div id="feedbackMessage" class="feedback-message" style="display: none;"></div>
+                    </div>
+                    
+                    <div class="game-controls">
+                        <button class="btn game-btn" id="nextChallenge" style="display: none;">Next Round →</button>
+                        <button class="btn game-btn" id="backToDifficulty" style="display: none;">← Back to Menu</button>
+                    </div>
+                </div>
+                
+                <div class="game-video-section">
+                    <div class="video-container">
+                        <video id="gameVideo" width="400" height="300" autoplay muted playsinline></video>
+                    </div>
+                    <canvas id="gameCanvas" width="400" height="300" style="display: none;"></canvas>
+                    
+                    <div class="controls">
+                        <button id="gameToggleButton" class="btn">🎥 Start Camera</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="gameStatus" class="status"></div>
+        </div>
+        
+        <div id="gameResults" class="game-results">
+            <div class="results-container">
+                <div class="results-title">🎉 Game Over!</div>
+                <div class="results-score" id="finalScore">0</div>
+                <div class="results-stats">
+                    <div class="result-stat">
+                        <div class="result-stat-label">Correct Answers</div>
+                        <div class="result-stat-value" id="finalCorrect">0/10</div>
+                    </div>
+                    <div class="result-stat">
+                        <div class="result-stat-label">Total Score</div>
+                        <div class="result-stat-value" id="finalTotalScore">0</div>
+                    </div>
+                </div>
+                <div class="game-controls" style="margin-top: 2rem;">
+                    <button class="btn game-btn" id="playAgain">Play Again</button>
+                    <button class="btn game-btn" id="backToMenu">Back to Menu</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="gameErrorMessage" class="error-message" style="display: none;"></div>
+    </div>
+
+    <script src="../js/game.js"></script>
+</body>
+</html>
+

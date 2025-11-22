@@ -42,4 +42,130 @@ Based on a review of SOTA solutions and commercial competitors, the project uses
    * Prediction delay ≤ 200 ms per frame
    * Target ≥ 25 FPS on a standard laptop webcam
 4. Usability & Stability: recognizes gestures consistently without false positives
-5. 
+5. Frontend: intuitive web interface with real-time recognition and gamification features
+
+---
+
+## Frontend
+
+### Overview
+The frontend is a modern, responsive web application built with HTML, CSS, and vanilla JavaScript. It provides a user-friendly interface for real-time hand gesture recognition and includes an interactive game mode with multiple difficulty levels.
+
+### Structure
+
+```
+frontend/
+├── css/
+│   └── style.css    # All application styles
+├── js/
+│   ├── game.js      # Game logic and game mode functionality
+│   └── home.js      # Home page gesture recognition logic
+├── pages/           # HTML pages
+│   ├── home.html    # Main recognition page
+│   └── game.html    # Game mode page
+├── index.html       # Entry point (redirects to pages/home.html)
+├── Dockerfile       # Docker configuration for deployment
+├── nginx.conf       # Nginx server configuration
+└── package.json     # Node.js dependencies (if any)
+```
+
+### Features
+
+#### 🏠 Home Page (`pages/home.html`)
+- **Real-time Gesture Recognition**
+  - Live camera feed with automatic frame processing
+  - Displays detected gestures with confidence scores
+  - Shows gesture count and average confidence statistics
+  - Visual feedback with emoji-enhanced gesture names
+
+- **Supported Gestures**
+  - Basic gestures: Civilian 👍, Mafia 👎, Sheriff 👌, Don 🎩
+  - Actions: If 🤙, Question ❓, Cool 🤘
+  - Pronouns: You 🫵, Me 👉
+  - Numbers: Zero 0️⃣, One 1️⃣, Two 2️⃣, Three 3️⃣, Four 4️⃣, Five 5️⃣
+
+- **User Experience**
+  - Clean, modern UI with animated gradient background
+  - Responsive design that works on desktop and mobile
+  - Camera access management with error handling
+  - Status indicators and error messages
+
+#### 🎮 Game Mode (`pages/game.html`)
+- **Three Difficulty Levels**
+  - **Easy (⭐)**: Show single gestures (15 seconds per round)
+  - **Medium (⭐⭐)**: Complete simple sentences with gesture sequences (25 seconds per round)
+  - **Hard (⭐⭐⭐)**: Complete complex sentences with gesture sequences (40 seconds per round)
+
+- **Game Mechanics**
+  - **10 rounds** per game
+  - **Time limits** per round (15/25/40 seconds depending on difficulty)
+  - **Scoring system**:
+    - Base points: 10 (Easy), 20 (Medium), 30 (Hard)
+    - Time bonus: +⌊remaining_time/3⌋ points
+    - Error penalty: -3 points per incorrect gesture
+  - **Challenge tracking**: Each challenge appears maximum 2 times per game, never consecutively
+  - **Visual feedback**: Real-time gesture sequence display with correct/incorrect indicators
+
+- **Game Features**
+  - Countdown timer before each round
+  - Live score tracking (Score, Round, Correct, Time)
+  - Timer turns red when ≤10 seconds remain
+  - Automatic progression between rounds
+  - Final results screen with total score and statistics
+
+- **Medium Level Sentences** (29 total)
+  - Simple questions and statements
+  - Sentences with numbers (1-5) and roles
+  - Variations with random numbers for replayability
+
+- **Hard Level Sentences** (23 total)
+  - Complex multi-gesture sequences
+  - Conditional statements
+  - Combinations of numbers, roles, and actions
+  - Multiple variations for increased challenge
+
+### Design
+
+- **Color Palette**
+  - Soft Cyan (#90f1ef)
+  - Petal Frost (#ffd6e0)
+  - Vanilla Custard (#ffef9f)
+  - Light Green (#c1fba4, #7bf1a8)
+  - Dark text (#1a2424) for readability
+
+- **Visual Elements**
+  - Animated gradient background
+  - Floating shapes for visual interest
+  - Glass-morphism UI components (semi-transparent with backdrop blur)
+  - Smooth transitions and animations
+  - High contrast for readability
+
+### Technical Implementation
+
+- **Camera Access**: `navigator.mediaDevices.getUserMedia()` API
+- **API Communication**: Fetch API with FormData for image uploads
+- **Frame Processing**: Canvas API for frame capture and conversion
+- **State Management**: Class-based JavaScript architecture
+- **Responsive Design**: CSS Grid and Flexbox with mobile breakpoints
+
+### API Integration
+
+- **Endpoint**: `http://localhost:8000/predict`
+- **Method**: POST
+- **Format**: FormData with image blob
+- **Response**: JSON with `gesture` and `confidence` fields
+
+### Browser Compatibility
+
+- Requires modern browser with:
+  - Camera access support (`getUserMedia`)
+  - ES6+ JavaScript support
+  - Canvas API support
+  - Fetch API support
+
+### Deployment
+
+- **Docker**: Ready for containerized deployment
+- **Nginx**: Configured for static file serving and API proxying
+- **Static Assets**: Optimized for production with caching headers
+
