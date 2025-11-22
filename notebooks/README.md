@@ -3,14 +3,14 @@
 This directory contains Jupyter notebooks and related files for the hand gesture recognition project pipeline. These notebooks handle data collection, preprocessing, model training, and evaluation.
 
 ## Pipeline Flow
-1. **dataset_creation.ipynb** → Collects raw gesture data
+1. **dataset_collection.ipynb** → Collects raw gesture data
 2. **prepare_data_training.ipynb** → Aggregates and analyzes data
 3. **model_training.ipynb** → Trains model (optionally uses gridsearch results for hyperparameter selection)
 4. **gridsearch_cv_results.csv** → Supports hyperparameter optimization during training
 
 ## Overview
 
-### dataset_creation.ipynb
+### dataset_collection.ipynb
 
 Capture hand gesture samples in real-time using a webcam and MediaPipe Hands for landmark detection.
 
