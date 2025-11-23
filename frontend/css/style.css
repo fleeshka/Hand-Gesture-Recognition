@@ -60,7 +60,7 @@
 
 /* Center difficulty selector on game page */
 .game-page .difficulty-selector {
-    margin-top: 5rem;
+    margin-top: 1rem;
 }
 
 .difficulty-btn {
@@ -533,40 +533,44 @@ body {
 
 /* Add padding for fixed header only on home page */
 .home-page .container {
-    padding-top: 200px; /* Space for fixed header */
+    padding-top: 4rem; /* Space for nav buttons */
 }
 
 .header {
     text-align: center;
     margin-bottom: 1.5rem;
     animation: slideInDown 1s ease-out;
+    position: static;
+    pointer-events: auto;
 }
 
 /* Game page header - different margins for difficulty selection and active game */
 .game-page .header {
-    margin-top: 6rem;
-    margin-bottom: 4rem;
-    position: relative;
-    z-index: 1;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    position: static;
+    z-index: auto;
+    pointer-events: auto;
 }
 
-/* When game is active, header should be higher */
+/* When game is active, header stays in normal flow */
 .game-page .game-container.active ~ .header,
 .game-page .game-container.active + * .header {
-    margin-top: 1rem;
-    margin-bottom: 1rem;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
 }
 
 /* Alternative: use sibling selector when game container is active */
 .game-page:has(.game-container.active) .header {
-    margin-top: 1rem;
-    margin-bottom: 1rem;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
 }
 
 /* Game container should be above header when game is active */
 .game-page .game-container.active {
     position: relative;
-    z-index: 2;
+    z-index: auto;
+    margin-top: 2rem;
 }
 
 /* Library page header - normal flow, same as other elements */
@@ -591,28 +595,28 @@ body {
     padding-top: 4rem;
 }
 
-/* Fixed header only for home page */
+/* Headers are now part of the page flow, not fixed */
 body:has(.container > .header:first-child) .header {
-    position: fixed;
-    top: 80px;
-    left: 0;
-    right: 0;
-    z-index: 100;
-    margin-bottom: 0;
+    position: static;
+    top: auto;
+    left: auto;
+    right: auto;
+    z-index: auto;
+    margin-bottom: 2rem;
     padding: 1rem 0;
-    pointer-events: none;
+    pointer-events: auto;
 }
 
-/* Alternative: use specific class for home page */
+/* Home page header - part of page flow */
 .home-page .header {
-    position: fixed;
-    top: 80px;
-    left: 0;
-    right: 0;
-    z-index: 100;
-    margin-bottom: 0;
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    z-index: auto !important;
+    margin-bottom: 2rem;
     padding: 1rem 0;
-    pointer-events: none;
+    pointer-events: auto !important;
 }
 
 /* Override for library page - ensure header is NOT fixed */

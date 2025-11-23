@@ -124,8 +124,8 @@ class GestureGame {
         this.isProcessing = false;
         
         this.API_URL = '/api/predict';
-        this.PROCESSING_INTERVAL = 500;
-        this.GESTURE_TIMEOUT = 2000; // 2 seconds
+        this.PROCESSING_INTERVAL = 400;
+        this.GESTURE_TIMEOUT = 1500; // 2 seconds
         
         this.initEventListeners();
     }

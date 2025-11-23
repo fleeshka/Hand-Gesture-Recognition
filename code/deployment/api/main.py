@@ -238,8 +238,8 @@ def extract_keypoints_from_image(image_bytes: bytes) -> Optional[np.ndarray]:
         with mp_hands.Hands(
             static_image_mode=True,
             max_num_hands=1,
-            min_detection_confidence=0.8,
-            min_tracking_confidence=0.7,
+            min_detection_confidence=0.7,
+            min_tracking_confidence=0.5,
         ) as hands:
 
             results = hands.process(img_rgb)

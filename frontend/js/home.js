@@ -16,7 +16,7 @@ class GestureRecognizer {
         this.isProcessing = false;
         
         this.API_URL = '/api/predict';
-        this.PROCESSING_INTERVAL = 500; // milliseconds
+        this.PROCESSING_INTERVAL = 300; // milliseconds
         
         // Statistics
         this.totalGestures = 0;
