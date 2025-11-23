@@ -504,15 +504,6 @@ docker run -p 3000:80 gesture-frontend
 6. **Monitoring**: Add health check endpoints
 7. **Backup**: Regular model file backups
 
-### Cloud Deployment
-
-The application can be deployed to:
-- **AWS**: ECS, EC2, or Lambda
-- **Google Cloud**: Cloud Run, GKE
-- **Azure**: Container Instances, AKS
-- **Heroku**: Using Docker containers
-- **DigitalOcean**: App Platform or Droplets
-
 ## 📊 Performance Metrics
 
 - **Accuracy**: >90% on validation set
@@ -542,7 +533,7 @@ Contributions are welcome! Please follow these steps:
 
 ## 📝 License
 
-This project is open source. Please check the repository for license details.
+This project is open source. 
 
 ## 🙏 Acknowledgments
 
@@ -550,12 +541,6 @@ This project is open source. Please check the repository for license details.
 - **FastAPI**: For the excellent web framework
 - **scikit-learn**: For machine learning tools
 - **OpenCV**: For computer vision capabilities
-
-## 📞 Support
-
-For issues, questions, or contributions:
-- **GitHub Issues**: [Create an issue](https://github.com/fleeshka/Hand-Gesture-Recognition/issues)
-- **Documentation**: Check the README files in each directory
 
 ## 🔮 Future Enhancements
 
