@@ -35,11 +35,11 @@ This project provides a complete end-to-end solution for recognizing hand gestur
 - [Detailed Setup](#detailed-setup)
 - [API Documentation](#api-documentation)
 - [Model Information](#model-information)
+- [Dataset Information](#dataset-information)
 - [Frontend Features](#frontend-features)
 - [Development](#development)
 - [Testing](#testing)
 - [Deployment](#deployment)
-- [Contributing](#contributing)
 
 ## 🛠️ Technologies
 
@@ -346,6 +346,125 @@ The system uses a **Logistic Regression** classifier from scikit-learn with the 
 Both files contain:
 - Trained Logistic Regression model
 - Label encoder for gesture classes
+
+## 📊 Dataset Information
+
+### Dataset Overview
+
+The hand gesture recognition model was trained on a comprehensive dataset collected specifically for this project. The dataset contains **67,774 samples** of hand gestures captured from **7 participants** using **2 different laptops** to ensure diversity in hardware and recording conditions.
+
+### Data Collection
+
+#### Collection Process
+
+1. **Participants**: 7 individuals contributed gesture samples
+2. **Hardware**: Data collected on 2 different laptops to ensure hardware diversity
+3. **Method**: Real-time capture using MediaPipe Hands for landmark detection
+4. **Format**: Each recording session saved as individual CSV files in `data/raw/`
+
+#### Data Collection Pipeline
+
+The data collection process follows these steps (see `notebooks/dataset_collection.ipynb`):
+
+1. **Real-time Capture**: Webcam captures hand gestures with MediaPipe Hands
+2. **Landmark Detection**: 21 hand landmarks extracted per frame
+3. **Normalization**: 
+   - Landmarks normalized relative to wrist position
+   - Scaled by maximum distance from wrist for size invariance
+4. **Labeling**: Each sample labeled with:
+   - Gesture name (e.g., "civilian", "three1", "zero")
+   - Handedness indicator (left=0, right=1)
+5. **Incremental Building**: Samples appended to CSV files, allowing multiple recording sessions
+
+### Dataset Structure
+
+#### Final Processed Dataset
+
+- **Location**: `data/processed/data.csv`
+- **Total Samples**: 67,774
+- **Features per Sample**: 65 columns
+  - **63 coordinates**: 21 landmarks × 3 coordinates (x, y, z)
+  - **1 gesture label**: String identifier (e.g., "civilian", "three1")
+  - **1 handedness flag**: Binary (0=left, 1=right)
+
+#### Data Format
+
+Each row in the dataset contains:
+```
+x0, y0, z0, x1, y1, z1, ..., x20, y20, z20, gesture, is_right_hand
+```
+
+Where:
+- `x0-z20`: Normalized coordinates for 21 hand landmarks
+- `gesture`: Gesture class label
+- `is_right_hand`: 1 for right hand, 0 for left hand
+
+### Data Preprocessing
+
+The dataset preparation pipeline (`notebooks/prepare_data_training.ipynb`) includes:
+
+1. **Aggregation**: 
+   - Searches `data/raw/` for all CSV files
+   - Combines multiple recording sessions into unified dataset
+   - Resets indexes for consistency
+
+2. **Integrity Checks**:
+   - Verifies all expected columns are present
+   - Checks for missing values
+   - Validates data structure
+
+3. **Analysis**:
+   - Sample counts per gesture
+   - Left/right hand distribution
+   - Descriptive statistics for landmarks
+   - Visualization of gesture distributions
+   - Mean hand shape computation per gesture
+
+### Dataset Characteristics
+
+#### Gesture Distribution
+
+The dataset includes samples for 16 gesture classes:
+- **Numbers**: zero, one, two, three1, three2, four, five
+- **Roles**: civilian, mafia, sheriff, don
+- **Communication**: if, question, cool, you, me
+
+#### Handedness Balance
+
+- Samples collected for both left and right hands
+- Distribution varies by gesture (some gestures naturally favor one hand)
+- Model trained to recognize gestures regardless of handedness
+
+#### Data Quality
+
+- **Normalization**: All landmarks normalized for consistency
+- **No Missing Values**: Complete dataset with all required features
+- **Diverse Conditions**: Collected across different:
+  - Lighting conditions
+  - Backgrounds
+  - Camera angles
+  - Hand positions
+  - Hardware configurations (2 laptops)
+
+### Dataset Usage
+
+The processed dataset (`data/processed/data.csv`) is used for:
+- Model training (see `notebooks/model_training.ipynb`)
+- Model evaluation and validation
+- Performance analysis
+- Feature engineering experiments
+
+### Data Collection Scripts
+
+- **Collection**: `notebooks/dataset_collection.ipynb`
+  - Interactive notebook for capturing gesture samples
+  - Configurable parameters (samples per gesture, capture interval)
+  - Real-time preview with mirrored display
+
+- **Preprocessing**: `notebooks/prepare_data_training.ipynb`
+  - Aggregates raw CSV files
+  - Performs data validation and analysis
+  - Generates processed dataset for training
 
 ## 🎨 Frontend Features
 
