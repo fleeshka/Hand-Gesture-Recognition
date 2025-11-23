@@ -123,7 +123,7 @@ class GestureGame {
         this.processingInterval = null;
         this.isProcessing = false;
         
-        this.API_URL = 'http://localhost:8000/predict';
+        this.API_URL = '/api/predict';
         this.PROCESSING_INTERVAL = 500;
         this.GESTURE_TIMEOUT = 2000; // 2 seconds
         
@@ -481,6 +481,8 @@ class GestureGame {
             }
         } catch (error) {
             console.error('Error processing frame:', error);
+            this.showError('🔌 Failed to process gesture. Please check if the backend is running.');
+            this.API_URL = 'http://localhost:8000/predict';
         } finally {
             this.isProcessing = false;
         }
