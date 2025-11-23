@@ -148,10 +148,6 @@ Hand-Gesture-Recognition-1/
    - Backend API: http://localhost:8000
    - API Docs: http://localhost:8000/docs
 
-### Local Development Setup
-
-See [Detailed Setup](#detailed-setup) section below.
-
 ## 📖 Detailed Setup
 
 ### Backend Setup
@@ -205,11 +201,6 @@ The API will be available at `http://localhost:8000`
 4. **Production build**
    ```bash
    npm run build
-   ```
-
-5. **Preview production build**
-   ```bash
-   npm run preview
    ```
 
 ### Model Training
@@ -285,7 +276,8 @@ GET /gestures
 **Response:**
 ```json
 {
-  "gestures": ["0", "1", "2", "3", "4", "5", "Civilian", "Cool", "Don", "If", "Mafia", "Question", "Sheriff", "You", "Me"]
+   "gestures": ['civilian', 'cool', 'don', 'five', 'four', 'if', 'mafia', 'me', 'one', 'question', 'sheriff', 'three1', 'three2', 'two', 'you', 'zero'],
+   "count": 16
 }
 ```
 
@@ -348,7 +340,7 @@ The system uses a **Logistic Regression** classifier from scikit-learn with the 
 
 ### Model Files
 
-- `models/gesture_lr_nums.pkl`: Model trained on numbers (0-5)
+- `models/gesture_lr_nums.pkl`: Model trained on all gesture and numbers (0-5)  
 - `models/gesture_lr.pkl`: Model trained on all gestures
 
 Both files contain:
@@ -507,29 +499,10 @@ docker run -p 3000:80 gesture-frontend
 ## 📊 Performance Metrics
 
 - **Accuracy**: >90% on validation set
-- **Latency**: <100ms per prediction
-- **Throughput**: 25+ FPS
-- **Model Size**: ~500KB (pickle file)
-- **Memory Usage**: ~200MB (backend container)
-- **CPU Usage**: ~15-20% on modern laptop
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. **Fork the repository**
-2. **Create a feature branch** (`git checkout -b feature/amazing-feature`)
-3. **Commit your changes** (`git commit -m 'Add amazing feature'`)
-4. **Push to the branch** (`git push origin feature/amazing-feature`)
-5. **Open a Pull Request**
-
-### Development Guidelines
-
-- Follow PEP 8 for Python code
-- Use ESLint/Prettier for JavaScript
-- Write docstrings for functions
-- Add comments for complex logic
-- Update README for new features
+- **Latency**: ~<100ms per prediction
+- **Throughput**: 30+ FPS
+- **Model Size**: ~16KB (pickle file)
+- **Memory Usage**: ~5GB (backend container)
 
 ## 📝 License
 
@@ -550,7 +523,6 @@ This project is open source.
 - [ ] Mobile app version
 - [ ] Custom gesture training interface
 - [ ] Real-time multiplayer game mode
-- [ ] Integration with game engines (Unity, Unreal)
 
 ---
 
