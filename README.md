@@ -276,7 +276,7 @@ GET /gestures
 **Response:**
 ```json
 {
-   "gestures": ['civilian', 'cool', 'don', 'five', 'four', 'if', 'mafia', 'me', 'one', 'question', 'sheriff', 'three1', 'three2', 'two', 'you', 'zero'],
+   "gestures": ["civilian", "cool", "don", "five", "four", "if", "mafia", "me", "one", "question", "sheriff", "three1", "three2", "two", "you", "zero"],
    "count": 16
 }
 ```
