@@ -6,7 +6,7 @@
     <title>AI Hand Gesture Recognition - Home</title>
     <link rel="stylesheet" href="../css/style.css">
 </head>
-<body>
+<body class="home-page">
     <div class="floating-shapes">
         <div class="shape"></div>
         <div class="shape"></div>
@@ -17,6 +17,7 @@
     <nav class="nav-bar">
         <a href="home.html" class="nav-btn active">🏠 Home</a>
         <a href="game.html" class="nav-btn">🎮 Game</a>
+        <a href="library.html" class="nav-btn">📚 Library</a>
     </nav>
 
     <div class="container">
@@ -37,11 +38,8 @@
                     <button id="toggleButton" class="btn">🎥 Start Camera</button>
                 </div>
 
-                <div class="feature-icons">
-                    <div class="feature-icon" title="Real-time Processing">⚡</div>
-                    <div class="feature-icon" title="AI Powered">🤖</div>
-                    <div class="feature-icon" title="High Accuracy">🎯</div>
-                    <div class="feature-icon" title="Secure">🔒</div>
+                <div class="tips-icons">
+                    <div class="tip-icon" data-tip="0" title="Click for tips">💡</div>
                 </div>
             </div>
 
@@ -59,6 +57,25 @@
                         <div class="stat-number" id="avgConfidence">0%</div>
                         <div class="stat-label">Avg Confidence</div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tipsModal" class="tips-modal" style="display: none;">
+            <div class="tips-modal-content">
+                <div class="tips-modal-header">
+                    <h3>💡 Tips for Best Recognition</h3>
+                    <button class="tips-close" id="tipsClose">×</button>
+                </div>
+                <div class="tips-modal-body">
+                    <ul>
+                        <li>Make sure your hand is fully visible in the camera frame</li>
+                        <li>Keep your gestures clear and distinct</li>
+                        <li>Hold each gesture for at least 1-2 seconds</li>
+                        <li>Ensure good lighting so the camera can see your hand clearly</li>
+                        <li>Keep your hand steady while showing the gesture</li>
+                        <li>Make sure your palm or fingers are facing the camera</li>
+                    </ul>
                 </div>
             </div>
         </div>

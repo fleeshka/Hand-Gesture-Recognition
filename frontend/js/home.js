@@ -24,7 +24,7 @@ class GestureRecognizer {
         this.lastGesture = null;
         
         this.initEventListeners();
-        this.initFeatureIcons();
+        this.initTipsIcons();
     }
     
     initEventListeners() {
@@ -37,16 +37,34 @@ class GestureRecognizer {
         });
     }
 
-    initFeatureIcons() {
-        const icons = document.querySelectorAll('.feature-icon');
-        icons.forEach(icon => {
-            icon.addEventListener('click', () => {
-                icon.style.animation = 'pulse 0.6s ease-in-out';
+    initTipsIcons() {
+        const tipIcon = document.querySelector('.tip-icon');
+        const tipsModal = document.getElementById('tipsModal');
+        const tipsClose = document.getElementById('tipsClose');
+        
+        if (tipIcon && tipsModal) {
+            tipIcon.addEventListener('click', () => {
+                tipsModal.style.display = 'flex';
+                tipIcon.style.animation = 'pulse 0.6s ease-in-out';
                 setTimeout(() => {
-                    icon.style.animation = '';
+                    tipIcon.style.animation = '';
                 }, 600);
             });
-        });
+        }
+        
+        if (tipsClose) {
+            tipsClose.addEventListener('click', () => {
+                tipsModal.style.display = 'none';
+            });
+        }
+        
+        if (tipsModal) {
+            tipsModal.addEventListener('click', (e) => {
+                if (e.target === tipsModal) {
+                    tipsModal.style.display = 'none';
+                }
+            });
+        }
     }
     
     async startCamera() {
@@ -114,8 +132,11 @@ class GestureRecognizer {
         try {
             this.isProcessing = true;
             
-            // Draw current video frame to canvas
-            this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+            // Draw current video frame to canvas (mirrored)
+            this.ctx.save();
+            this.ctx.scale(-1, 1);
+            this.ctx.drawImage(this.video, -this.canvas.width, 0, this.canvas.width, this.canvas.height);
+            this.ctx.restore();
             
             // Convert canvas to blob
             const blob = await this.canvasToBlob();
@@ -199,6 +220,8 @@ class GestureRecognizer {
             '1': '1️⃣',
             '2': '2️⃣',
             '3': '3️⃣',
+            'Three1': '3️⃣',
+            'Three2': '3️⃣',
             '4': '4️⃣',
             '5': '5️⃣'
         };
@@ -221,6 +244,8 @@ class GestureRecognizer {
             '1': 'One 1️⃣',
             '2': 'Two 2️⃣',
             '3': 'Three 3️⃣',
+            'Three1': 'Three 3️⃣',
+            'Three2': 'Three 3️⃣',
             '4': 'Four 4️⃣',
             '5': 'Five 5️⃣'
         };

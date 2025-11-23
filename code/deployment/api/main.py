@@ -9,6 +9,7 @@ import pickle
 from pydantic import BaseModel
 import os
 import io
+import time
 from typing import List, Optional
 
 # MediaPipe will be imported lazily when needed to avoid heavy imports at startup
@@ -35,7 +36,7 @@ GESTURE_CLASSES = []
 
 # Model loading: support MODEL_DIR (directory) and MODEL_FILE (specific path).
 MODEL_DIR = os.getenv("MODEL_DIR", "/app/models")
-MODEL_FILE = os.getenv("MODEL_FILE", "/app/models/gesture_lr.pkl")
+MODEL_FILE = os.getenv("MODEL_FILE", "/app/models/gesture_lr_nums.pkl")
 
 def find_model_path():
     # Candidate locations (first that exists will be used)
@@ -43,7 +44,7 @@ def find_model_path():
     if MODEL_FILE:
         candidates.append(MODEL_FILE)
     # Common filenames inside MODEL_DIR
-    candidates.append(os.path.join(MODEL_DIR, "gesture_lr.pkl"))
+    candidates.append(os.path.join(MODEL_DIR, "gesture_lr_nums.pkl"))
 
     # Try repository-relative locations (useful for local development)
     # repo-relative path: go up three levels from api folder to repo root, then into models/
@@ -53,8 +54,8 @@ def find_model_path():
         "..",
         "..",
     )
-    candidates.append(os.path.join(repo_root, "models", "gesture_lr.pkl"))
-    candidates.append(os.path.join(repo_root, "notebooks", "gesture_lr.pkl"))
+    candidates.append(os.path.join(repo_root, "models", "gesture_lr_nums.pkl"))
+    candidates.append(os.path.join(repo_root, "notebooks", "gesture_lr_nums.pkl"))
 
     for p in candidates:
         try:
@@ -110,6 +111,7 @@ class PredictionResponse(BaseModel):
     gesture: str
     confidence: float
     all_predictions: Optional[List[dict]] = None
+    latency_ms: Optional[float] = None
 
 
 class ErrorResponse(BaseModel):
@@ -117,16 +119,59 @@ class ErrorResponse(BaseModel):
     detail: Optional[str] = None
 
 
+def normalize_gesture_name(gesture_name: str) -> str:
+    """Normalize gesture names to standard format for frontend display.
+    
+    Maps variations like 'Three1', 'Three2', 'One', 'Two', etc. to standard names.
+    """
+    if not gesture_name:
+        return gesture_name
+    
+    # Normalize: strip whitespace and handle case-insensitive matching
+    gesture_clean = str(gesture_name).strip()
+    gesture_lower = gesture_clean.lower()
+    
+    # Map Three1 and Three2 to "3" for consistency (case-insensitive)
+    # Also handle variations like "three_1", "three-1", etc.
+    if gesture_lower in ["three1", "three2", "three_1", "three_2", "three-1", "three-2"]:
+        log.info(f"Normalizing gesture: '{gesture_name}' -> '3'")
+        return "3"
+    
+    # Map word names to digits for consistency (case-insensitive)
+    word_to_digit = {
+        "zero": "0",  # Keep "Zero" as is (frontend expects it)
+        "one": "1",
+        "two": "2",
+        "three": "3",
+        "four": "4",
+        "five": "5",
+    }
+    
+    if gesture_lower in word_to_digit:
+        normalized = word_to_digit[gesture_lower]
+        log.info(f"Normalizing gesture: '{gesture_name}' -> '{normalized}'")
+        return normalized
+    
+    # Return as-is for other gestures
+    log.debug(f"Gesture '{gesture_name}' not normalized, returning as-is")
+    return gesture_clean
+
+
 def predict_gesture(image_bytes: bytes) -> dict:
     """Predict gesture from image bytes using sklearn LogisticRegression"""
+    start_time = time.time()
     try:
         # If no model, return demo
         if model is None or label_encoder is None:
-            return demo_prediction()
+            result = demo_prediction()
+            latency_ms = (time.time() - start_time) * 1000
+            result["latency_ms"] = round(latency_ms, 2)
+            return result
 
         keypoints = extract_keypoints_from_image(image_bytes)
         if keypoints is None:
-            return {"gesture": "No hand detected", "confidence": 0.0}
+            latency_ms = (time.time() - start_time) * 1000
+            return {"gesture": "No hand detected", "confidence": 0.0, "latency_ms": round(latency_ms, 2)}
 
         # Get prediction probabilities
         probs = model.predict_proba(keypoints)[0]
@@ -137,27 +182,39 @@ def predict_gesture(image_bytes: bytes) -> dict:
 
         # Get gesture name from label encoder
         gesture_name = label_encoder.inverse_transform([predicted_class_idx])[0]
+        log.info(f"Raw gesture from model: '{gesture_name}'")
+        
+        # Normalize gesture name for frontend display
+        normalized_gesture = normalize_gesture_name(gesture_name)
+        log.info(f"Normalized gesture: '{normalized_gesture}'")
 
         # Get all predictions for debugging
         all_predictions = []
         for i, prob in enumerate(probs):
             class_name = label_encoder.inverse_transform([i])[0]
-            all_predictions.append({"class": class_name, "confidence": float(prob)})
+            normalized_class = normalize_gesture_name(class_name)
+            all_predictions.append({"class": normalized_class, "confidence": float(prob)})
 
         # Sort by confidence
         all_predictions.sort(key=lambda x: x["confidence"], reverse=True)
 
+        # Calculate latency
+        latency_ms = (time.time() - start_time) * 1000
+        log.info(f"Prediction latency: {latency_ms:.2f} ms")
+
         return {
-            "gesture": gesture_name,
+            "gesture": normalized_gesture,
             "confidence": confidence,
             "all_predictions": all_predictions[:3],  # Return top 3 predictions
+            "latency_ms": round(latency_ms, 2),
         }
 
     except Exception as e:
         log.error(f"Prediction error: {e}")
         import traceback
         log.error(traceback.format_exc())
-        return {"gesture": "error", "confidence": 0.0}
+        latency_ms = (time.time() - start_time) * 1000
+        return {"gesture": "error", "confidence": 0.0, "latency_ms": round(latency_ms, 2)}
 
 def extract_keypoints_from_image(image_bytes: bytes) -> Optional[np.ndarray]:
     """Use MediaPipe to extract 21 hand landmarks (x,y,z) + is_right_hand -> 64 values and return shape (1,64) array.
@@ -181,8 +238,8 @@ def extract_keypoints_from_image(image_bytes: bytes) -> Optional[np.ndarray]:
         with mp_hands.Hands(
             static_image_mode=True,
             max_num_hands=1,
-            min_detection_confidence=0.7,
-            min_tracking_confidence=0.5,
+            min_detection_confidence=0.8,
+            min_tracking_confidence=0.7,
         ) as hands:
 
             results = hands.process(img_rgb)
@@ -255,6 +312,7 @@ def demo_prediction() -> dict:
         "gesture": gesture,
         "confidence": confidence,
         "all_predictions": all_predictions[:3],
+        "latency_ms": round(random.uniform(10, 50), 2),  # Demo latency
     }
 
 
@@ -307,8 +365,9 @@ async def predict_gesture_endpoint(file: UploadFile = File(...)):
             result = demo_prediction()
             log.warning("Using demo prediction - no model loaded")
 
+        latency_info = f", latency={result.get('latency_ms', 'N/A')} ms" if 'latency_ms' in result else ""
         log.info(
-            f"Prediction: {result['gesture']} (confidence: {result['confidence']:.2f})"
+            f"Final prediction result: gesture='{result['gesture']}', confidence={result['confidence']:.2f}{latency_info}"
         )
 
         return PredictionResponse(**result)

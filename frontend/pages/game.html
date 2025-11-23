@@ -6,7 +6,7 @@
     <title>AI Hand Gesture Recognition - Game</title>
     <link rel="stylesheet" href="../css/style.css">
 </head>
-<body>
+<body class="game-page">
     <div class="floating-shapes">
         <div class="shape"></div>
         <div class="shape"></div>
@@ -17,6 +17,7 @@
     <nav class="nav-bar">
         <a href="home.html" class="nav-btn">🏠 Home</a>
         <a href="game.html" class="nav-btn active">🎮 Game</a>
+        <a href="library.html" class="nav-btn">📚 Library</a>
     </nav>
 
     <div class="container">
@@ -27,17 +28,20 @@
         
         <div id="difficultySelector" class="difficulty-selector">
             <div class="difficulty-btn" data-difficulty="easy">
-                <h3>⭐ Easy</h3>
+                <h3>⭐</h3>
+                <h3> Easy </h3>
                 <p>Show the gesture that appears on screen</p>
             </div>
             
             <div class="difficulty-btn" data-difficulty="medium">
-                <h3>⭐⭐ Medium</h3>
+                <h3>⭐⭐</h3>
+                <h3> Medium </h3>
                 <p>Complete simple sentences with gestures</p>
             </div>
             
             <div class="difficulty-btn" data-difficulty="hard">
-                <h3>⭐⭐⭐ Hard</h3>
+                <h3>⭐⭐⭐</h3>
+                <h3> Hard </h3>
                 <p>Complete complex sentences with gestures</p>
             </div>
         </div>
@@ -68,7 +72,7 @@
                         <div class="challenge-text" id="challengeText">Ready to start?</div>
                         <div class="challenge-hint" id="challengeHint"></div>
                         <div class="gesture-sequence" id="gestureSequence"></div>
-                        <div id="feedbackMessage" class="feedback-message" style="display: none;"></div>
+                        <div id="feedbackMessage" class="feedback-message"></div>
                     </div>
                     
                     <div class="game-controls">

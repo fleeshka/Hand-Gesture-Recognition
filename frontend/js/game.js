@@ -201,10 +201,10 @@ class GestureGame {
     showGameResults(show = true) {
         if (show) {
             this.gameResults.classList.add('active');
-            this.gameResults.style.display = 'block';
+            // CSS handles visibility/opacity through .active class
         } else {
             this.gameResults.classList.remove('active');
-            this.gameResults.style.display = 'none';
+            // CSS handles hiding through removal of .active class
         }
     }
     
@@ -472,7 +472,11 @@ class GestureGame {
         try {
             this.isProcessing = true;
             
-            this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+            // Draw current video frame to canvas (mirrored)
+            this.ctx.save();
+            this.ctx.scale(-1, 1);
+            this.ctx.drawImage(this.video, -this.canvas.width, 0, this.canvas.width, this.canvas.height);
+            this.ctx.restore();
             const blob = await this.canvasToBlob();
             const result = await this.sendFrameToAPI(blob);
             
@@ -576,8 +580,7 @@ class GestureGame {
                     expectedItem.classList.add('correct');
                     expectedItem.classList.remove('incorrect');
                     // Hide error feedback if gesture is now correct
-                    if (this.feedbackMessage.style.display === 'block' && 
-                        this.feedbackMessage.classList.contains('error')) {
+                    if (this.feedbackMessage.classList.contains('error')) {
                         setTimeout(() => this.hideFeedback(), 1000);
                     }
                 } else {
@@ -600,32 +603,43 @@ class GestureGame {
                 this.timerInterval = null;
             }
             
-            // Calculate score based on correctness and errors
+            // Calculate score based on correctness
             const isCorrect = current.every((g, i) => g === expected[i]);
+            
+            // Count correct gestures
+            let correctCount = 0;
+            for (let i = 0; i < current.length; i++) {
+                if (current[i] === expected[i]) {
+                    correctCount++;
+                }
+            }
+            
+            const totalGestures = expected.length;
             const timeBonus = Math.floor(this.timeLeft / 3);
             const baseScore = this.difficulty === 'medium' ? 20 : 30;
             
             let finalScore = 0;
             let feedbackMessage = '';
             
-            if (isCorrect && this.incorrectGestures === 0) {
-                // Perfect - no errors
+            if (isCorrect) {
+                // All gestures correct - full points
                 finalScore = baseScore + timeBonus;
-                feedbackMessage = `🎉 Perfect! Sentence completed correctly! +${finalScore} points`;
+                feedbackMessage = `🎉 Perfect! All gestures correct! +${finalScore} points`;
                 this.correct++;
-            } else if (isCorrect && this.incorrectGestures > 0) {
-                // Correct but had errors - reduce score
-                const errorPenalty = this.incorrectGestures * 3; // -3 points per error
-                finalScore = Math.max(0, baseScore + timeBonus - errorPenalty);
-                feedbackMessage = `✅ Correct, but with ${this.incorrectGestures} error(s). +${finalScore} points (penalty: -${errorPenalty})`;
-                this.correct++;
+            } else if (correctCount >= 1) {
+                // Partially correct - at least 1 gesture is correct
+                // Calculate partial score based on correct gestures ratio
+                const correctRatio = correctCount / totalGestures;
+                finalScore = Math.floor((baseScore + timeBonus) * correctRatio);
+                feedbackMessage = `✅ Partially correct! ${correctCount}/${totalGestures} gestures correct. +${finalScore} points`;
+                // Don't count as fully correct
             } else {
-                // Incorrect sequence - minimal points
-                finalScore = Math.max(0, Math.floor((baseScore + timeBonus) / 2) - (this.incorrectGestures * 2));
-                feedbackMessage = `❌ Incorrect sequence with ${this.incorrectGestures} error(s). +${finalScore} points`;
+                // No correct gestures - no points
+                finalScore = 0;
+                feedbackMessage = `❌ Incorrect! None of the gestures matched. +0 points`;
             }
             
-            this.showFeedback(feedbackMessage, isCorrect ? 'success' : 'error');
+            this.showFeedback(feedbackMessage, isCorrect || correctCount >= 1 ? 'success' : 'error');
             this.score += finalScore;
             this.updateScore();
             
@@ -671,11 +685,12 @@ class GestureGame {
     showFeedback(message, type) {
         this.feedbackMessage.textContent = message;
         this.feedbackMessage.className = `feedback-message ${type}`;
-        this.feedbackMessage.style.display = 'block';
+        // CSS handles visibility/opacity through classes
     }
     
     hideFeedback() {
-        this.feedbackMessage.style.display = 'none';
+        this.feedbackMessage.className = 'feedback-message';
+        // Reset to default hidden state
     }
     
     updateGameStatus(message) {
@@ -684,11 +699,12 @@ class GestureGame {
     
     showError(message) {
         this.gameErrorMessage.innerHTML = message;
-        this.gameErrorMessage.style.display = 'block';
+        // CSS handles visibility through attribute selector
+        this.gameErrorMessage.setAttribute('style', 'display: block;');
     }
     
     hideError() {
-        this.gameErrorMessage.style.display = 'none';
+        this.gameErrorMessage.setAttribute('style', 'display: none;');
     }
     
     getCameraErrorMessage(error) {
@@ -717,6 +733,8 @@ class GestureGame {
             '1': 'One 1️⃣',
             '2': 'Two 2️⃣',
             '3': 'Three 3️⃣',
+            'Three1': 'Three 3️⃣',
+            'Three2': 'Three 3️⃣',
             '4': 'Four 4️⃣',
             '5': 'Five 5️⃣'
         };
@@ -734,10 +752,12 @@ class GestureGame {
             'sheriff': 'Sheriff',
             'you': 'You',
             'me': 'Me',
-            '0': 'Zero',
+            'Zero': 'Zero',
             '1': 'One',
             '2': 'Two',
             '3': 'Three',
+            'Three1': 'Three',
+            'Three2': 'Three',
             '4': 'Four',
             '5': 'Five'
         };
